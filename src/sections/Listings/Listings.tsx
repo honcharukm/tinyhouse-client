@@ -2,6 +2,9 @@ import React from 'react'
 import { useMutation, useQuery, gql } from '@apollo/client'
 import { Listings as ListingsData } from './__generated__/Listings'
 import { DeleteListing as DeleteListingData, DeleteListingVariables } from './__generated__/DeleteListing'
+import { List, Avatar, Button, Spin } from 'antd'
+import { ListingsSkeleton } from './components'
+import './styles/Listings.css'
 
 const LISTINGS = gql`
     query Listings {
@@ -9,6 +12,7 @@ const LISTINGS = gql`
             id
             title
             image
+            address
         }
     }
 `
@@ -19,7 +23,11 @@ const DELETE_LISTING = gql`
     }
 `
 
-export const Listings = () => {
+interface Props {
+    title: string
+}
+
+export const Listings: React.FunctionComponent<Props> = ({ title }) => {
     const { data, loading, error, refetch } = useQuery<ListingsData>(LISTINGS)
 
     const [deleteListing, { 
@@ -34,34 +42,53 @@ export const Listings = () => {
 
     const listings = data ? data.listings : null
 
-    const listingsList = listings ? (
-        <ul>
-            {listings.map(listing => {
-                return (
-                    <li key={listing.id}>
-                        {listing.title}
-                        <button onClick={() => handleDeleteListing(parseInt(listing.id))}>delete</button>
-                    </li>)
-            })}
-        </ul>
-    ) : null 
+    const listingsList = listings 
+        ? (
+            <List
+                itemLayout="horizontal"
+                dataSource={listings}
+                renderItem={(listing) => (
+                    <List.Item 
+                        actions={[
+                            <Button 
+                                type="primary"
+                                onClick={() => handleDeleteListing(parseInt(listing.id))}
+                            >Delete</Button>
+                        ]}>
+                        <List.Item.Meta 
+                            title={listing.title} 
+                            description={listing.address}
+                            avatar={
+                                <Avatar
+                                    src={listing.image}
+                                    shape="square"
+                                    size={48}
+                                />
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
+        ) : null
 
     if (loading) {
-        return <h2>Loading...</h2>
+        return (
+            <div className='listings'>
+                <ListingsSkeleton title={title} />
+            </div>
+        )
     }
 
     if (error) {
         return (
-            <h2>
-                Uh oh! Something went wrong - please try again later :(
-            </h2>
+            <div className='listings'>
+                <ListingsSkeleton 
+                    title={title}
+                    error 
+                />
+            </div>
         )
     }
-
-    const deleteListingLoadingMessage = deleteListingLoading 
-        ? (
-            <h4>Deletion in progress</h4>
-        ) : null
 
     const deleteListingErrorMessage = deleteListingError
         ? (
@@ -71,11 +98,14 @@ export const Listings = () => {
         ) : null
 
     return (
-        <div>
-            <h2>Tinyhouse Listings</h2>
-            {listingsList}
-            {deleteListingLoadingMessage}
-            {deleteListingErrorMessage}
+        <div className="listings">
+            <Spin
+                spinning={deleteListingLoading}
+            >
+                <h2>{title}</h2>
+                {listingsList}
+                {deleteListingErrorMessage}
+            </Spin>
         </div>
     )
 }

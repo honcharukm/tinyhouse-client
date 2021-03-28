@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import reportWebVitals from './reportWebVitals';
 import { ApolloClient, InMemoryCache, ApolloProvider } from "@apollo/client"
+import './styles/index.css'
 import { Listings } from './sections'
 
 const client = new ApolloClient({
@@ -12,7 +13,7 @@ const client = new ApolloClient({
 ReactDOM.render(
 	<React.StrictMode>
 		<ApolloProvider client={client}>
-			<Listings />
+			<Listings title="TinyHouse Listings" />
 		</ApolloProvider>
 	</React.StrictMode>,
   document.getElementById('root')
