@@ -4,9 +4,12 @@ import { AUTH_URL } from '../../lib/graphql/queries/'
 import { AuthUrl as AuthUrlData } from '../../lib/graphql/queries/AuthUrl/__generated__/AuthUrl'
 import { LOG_IN } from '../../lib/graphql/mutation'
 import { LogIn as LogInData, LogInVariables } from '../../lib/graphql/mutation/LogIn/__generated__/LogIn'
-import { Card, Layout, Typography } from 'antd'
+import { Card, Layout, Spin, Typography } from 'antd'
 import googleLogo from './assets/google_logo.jpg'
 import { Viewer } from '../../lib/types'
+import { ErrorBanner } from '../../lib/components/'
+import { displayErrorMessage, displaySuccessNotification } from '../../lib/utils'
+import { Redirect } from 'react-router-dom'
 
 const { Content } = Layout
 const { Text, Title } = Typography
@@ -20,7 +23,7 @@ export const Login: React.FC<Props> = ({ setViewer }) => {
     const [ 
         logIn, 
         { 
-            data: LogInData, 
+            data: logInData, 
             loading: logInLoading, 
             error: logInError 
         } 
@@ -28,6 +31,7 @@ export const Login: React.FC<Props> = ({ setViewer }) => {
         onCompleted: data => {
             if (data && data.logIn) {
                 setViewer(data.logIn)
+                displaySuccessNotification('You\'ve successfully logged in!')
             }
         }
     })
@@ -53,11 +57,31 @@ export const Login: React.FC<Props> = ({ setViewer }) => {
             })
 
             window.location.href = data.authUrl
-        } catch {}
+        } catch {
+            displayErrorMessage('Sorry! We weren\'t able to log in. Please try again later!')
+        }
     }
+
+    if (logInLoading) {
+        return (
+            <Content className="log-in">
+                <Spin size="large" tip="Logging you in ..." />
+            </Content>
+        )
+    }
+
+    if (logInData && logInData.logIn) {
+        const { id: viewerId } = logInData.logIn
+        return <Redirect to={`/user/${viewerId}`} /> 
+    }
+
+    const logInErrorBannerElement = logInError ? (
+        <ErrorBanner description="Sorry! We weren't able to log in. Please try again later!" />
+    ) : null
 
     return (
         <Content className="log-in">
+            {logInErrorBannerElement}
             <Card className="log-in-card">
                 <div className="log-in-card__intro">
                     <Title level={3} className="log-in-card__intro-title">
