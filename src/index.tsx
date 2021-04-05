@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import reportWebVitals from './reportWebVitals';
-import { ApolloClient, InMemoryCache, ApolloProvider } from "@apollo/client"
+import { 
+	ApolloClient,
+	HttpLink,
+	ApolloLink, 
+	InMemoryCache,
+	concat, 
+	ApolloProvider,
+	useMutation 
+} from "@apollo/client"
 import './styles/index.css'
 import { 
 	Home, 
@@ -13,13 +21,33 @@ import {
 	Login,
 	AppHeader 
 } from './sections'
-import { Layout, Affix } from 'antd'
+import { Layout, Affix, Spin } from 'antd'
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom'
 import { Viewer } from './lib/types'
+import { LOG_IN } from './lib/graphql/mutation'
+import { LogIn as LogInData, LogInVariables } from './lib/graphql/mutation/LogIn/__generated__/LogIn'
+import { AppHeaderSkeleton, ErrorBanner } from './lib/components';
+
+const httpLink = new HttpLink({
+	uri: 'http://localhost:9000/',
+	credentials: 'include'
+})
+
+const authMiddleware = new ApolloLink((operation, forward) => {
+	const token = sessionStorage.getItem('token')
+	
+	operation.setContext({
+		headers: {
+			'X-CSRF-TOKEN': token || ''
+		}
+	})
+	
+	return forward(operation)
+})
 
 const client = new ApolloClient({
-	uri: 'http://localhost:9000/',
-	cache: new InMemoryCache()
+	cache: new InMemoryCache(),
+	link: concat(authMiddleware, httpLink)
 })
 
 const initialViewer: Viewer = {
@@ -32,10 +60,45 @@ const initialViewer: Viewer = {
 
 const App: React.FC = () => {
 	const [viewer, setViewer] = useState<Viewer>(initialViewer)
+	const [logIn, { error }] = useMutation<LogInData, LogInVariables>(LOG_IN, {
+		onCompleted: data => {
+			if (data && data.logIn) {
+				setViewer(data.logIn)
+			}
+
+			if (data.logIn.token) {
+				sessionStorage.setItem('token', data.logIn.token)
+			} else {
+				sessionStorage.removeItem('token')
+			}
+		}
+	})
+
+	const logInRef = useRef(logIn)
+
+	useEffect(() => {
+		logInRef.current()
+	}, [])
+
+	if (!viewer.didRequest && !error) {
+		return (
+			<Layout className="app-skeleton">
+				<AppHeaderSkeleton />
+				<div className="app-skeletonn_spin-section">
+					<Spin size="large" tip="Launching Tinyhouse" />
+				</div>
+			</Layout>
+		)
+	}
+
+	const logInErrorBannerElement = error ? (
+		<ErrorBanner description="We weren't able to verify if you were logged in. Please try again later!" />
+	) : null
 
 	return (
 		<Router>
 			<Layout id="app">
+				{logInErrorBannerElement}
 				<Affix offsetTop={0} className="app__affix-header">
 					<AppHeader viewer={viewer} setViewer={setViewer} />
 				</Affix>
