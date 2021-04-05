@@ -29,7 +29,8 @@ export const Login: React.FC<Props> = ({ setViewer }) => {
         } 
     ] = useMutation<LogInData, LogInVariables>(LOG_IN, {
         onCompleted: data => {
-            if (data && data.logIn) {
+            if (data && data.logIn && data.logIn.token) {
+                sessionStorage.setItem('token', data.logIn.token)
                 setViewer(data.logIn)
                 displaySuccessNotification('You\'ve successfully logged in!')
             }
